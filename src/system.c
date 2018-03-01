@@ -306,7 +306,7 @@ static void processKeyboard()
 {
 	static const u8 KeyboardCodes[] = 
 	{
-		#include "keycodes.c"
+		#include "keycodes.inl"
 	};
 
 	tic80_input* input = &platform.studio->tic->ram.input;
