@@ -190,7 +190,7 @@ static void initTouchKeyboard()
 	{		
 		platform.keyboard.texture.up = GPU_CreateImage(TIC80_FULLWIDTH, TIC80_FULLHEIGHT, STUDIO_PIXEL_FORMAT);
 		GPU_SetAnchor(platform.keyboard.texture.up, 0, 0);
-		// GPU_SetImageFilter(platform.keyboard.texture.up, GPU_FILTER_NEAREST);
+		GPU_SetImageFilter(platform.keyboard.texture.up, GPU_FILTER_NEAREST);
 	}
 
 	{
@@ -210,7 +210,7 @@ static void initTouchKeyboard()
 	{		
 		platform.keyboard.texture.down = GPU_CreateImage(TIC80_FULLWIDTH, TIC80_FULLHEIGHT, STUDIO_PIXEL_FORMAT);
 		GPU_SetAnchor(platform.keyboard.texture.down, 0, 0);
-		// GPU_SetImageFilter(platform.keyboard.texture.up, GPU_FILTER_NEAREST);
+		GPU_SetImageFilter(platform.keyboard.texture.down, GPU_FILTER_NEAREST);
 	}
 
 	{
@@ -434,6 +434,65 @@ static bool checkTouch(const SDL_Rect* rect, s32* x, s32* y)
 	return false;
 }
 
+static void processTouchKeyboard()
+{
+	enum{Cols=30, Rows=14};
+
+	s32 w, h;
+	SDL_GetWindowSize(platform.window, &w, &h);
+
+	s32 y = h - (Rows * TIC_SPRITESIZE + OFFSET_TOP*2) * w / TIC80_FULLWIDTH;
+
+	float scale = (float)w / (TIC80_FULLWIDTH);
+
+	SDL_Rect kbd = {OFFSET_LEFT*scale, y + OFFSET_TOP*scale, TIC80_WIDTH*scale, TIC80_HEIGHT*scale};
+
+	static const tic_key KbdLayout[] = 
+	{
+		#include "kbdlayout.inl"
+	};
+
+	tic80_input* input = &platform.studio->tic->ram.input;
+
+	s32 devices = SDL_GetNumTouchDevices();
+
+	for (s32 i = 0; i < devices; i++)
+	{
+		SDL_TouchID id = SDL_GetTouchDevice(i);
+		s32 fingers = SDL_GetNumTouchFingers(id);
+
+		for (s32 f = 0; f < fingers; f++)
+		{
+			SDL_Finger* finger = SDL_GetTouchFinger(id, f);
+
+			if (finger && finger->pressure > 0.0f)
+			{
+				SDL_Point pt = {finger->x * w, finger->y * h};
+
+				if(SDL_PointInRect(&pt, &kbd))
+				{
+					pt.x -= kbd.x;
+					pt.y -= kbd.y;
+
+					pt.x /= scale;
+					pt.y /= scale;
+
+					for(s32 i = 0; i < COUNT_OF(input->keyboard.keys); i++)
+					{
+						tic_key* key = &input->keyboard.keys[i];
+
+						if(*key == tic_key_unknown)
+						{
+							*key = KbdLayout[pt.x / TIC_SPRITESIZE + pt.y / TIC_SPRITESIZE * Cols];
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 static void processTouchGamepad()
 {
 	platform.gamepad.touch.data = 0;
@@ -604,9 +663,12 @@ static void processJoysticks()
 
 static void processGamepad()
 {
+
 #if !defined(__EMSCRIPTEN__) && !defined(__MACOSX__)
 	processTouchGamepad();
+	processTouchKeyboard();
 #endif
+
 	processJoysticks();
 	
 	{
@@ -685,7 +747,7 @@ static void pollEvent()
 		}
 	}
 
-	processMouse();
+	// processMouse();
 	processKeyboard();
 	processGamepad();
 }
@@ -749,13 +811,10 @@ static void renderKeyboard()
 	s32 w, h;
 	SDL_GetWindowSize(platform.window, &w, &h);
 
-	s32 wh = h;
-	h = (Rows * TIC_SPRITESIZE + OFFSET_TOP*2) * w / TIC80_FULLWIDTH;
-
-	// GPU_Rect src = {0, 0, TIC80_FULLWIDTH, Rows * TIC_SPRITESIZE + OFFSET_TOP*2};
+	s32 y = h - (Rows * TIC_SPRITESIZE + OFFSET_TOP*2) * w / TIC80_FULLWIDTH;
 
 	float scale = (float)w / (TIC80_FULLWIDTH);
-	GPU_BlitScale(platform.keyboard.texture.up, NULL, platform.gpu.screen, 0, wh - h, scale, scale);
+	GPU_BlitScale(platform.keyboard.texture.up, NULL, platform.gpu.screen, 0, y, scale, scale);
 
 	{
 		static const tic_key KbdLayout[] = 
@@ -774,11 +833,8 @@ static void renderKeyboard()
 				{
 					if(key == KbdLayout[k])
 					{
-						GPU_Rect src = {(k % Cols)*TIC_SPRITESIZE + OFFSET_LEFT, (k / Cols)*TIC_SPRITESIZE + OFFSET_TOP, 
-							TIC_SPRITESIZE, TIC_SPRITESIZE};
-
-						GPU_BlitScale(platform.keyboard.texture.down, &src, platform.gpu.screen, 
-							0 + src.x * scale, wh - h + src.y * scale, scale, scale);
+						GPU_Rect src = {(k % Cols)*TIC_SPRITESIZE + OFFSET_LEFT, (k / Cols)*TIC_SPRITESIZE + OFFSET_TOP, TIC_SPRITESIZE, TIC_SPRITESIZE};
+						GPU_BlitScale(platform.keyboard.texture.down, &src, platform.gpu.screen, src.x * scale, y + src.y * scale, scale, scale);
 					}
 				}
 			}		
