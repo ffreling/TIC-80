@@ -665,7 +665,7 @@ static void processGamepad()
 {
 
 #if !defined(__EMSCRIPTEN__) && !defined(__MACOSX__)
-	processTouchGamepad();
+	// processTouchGamepad();
 	processTouchKeyboard();
 #endif
 
