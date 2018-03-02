@@ -441,9 +441,9 @@ static void processTouchKeyboard()
 	s32 w, h;
 	SDL_GetWindowSize(platform.window, &w, &h);
 
-	s32 y = h - (Rows * TIC_SPRITESIZE + OFFSET_TOP*2) * w / TIC80_FULLWIDTH;
 
 	float scale = (float)w / (TIC80_FULLWIDTH);
+	s32 y = TIC80_FULLHEIGHT * scale;
 
 	SDL_Rect kbd = {OFFSET_LEFT*scale, y + OFFSET_TOP*scale, TIC80_WIDTH*scale, TIC80_HEIGHT*scale};
 
@@ -811,9 +811,9 @@ static void renderKeyboard()
 	s32 w, h;
 	SDL_GetWindowSize(platform.window, &w, &h);
 
-	s32 y = h - (Rows * TIC_SPRITESIZE + OFFSET_TOP*2) * w / TIC80_FULLWIDTH;
-
 	float scale = (float)w / (TIC80_FULLWIDTH);
+
+	s32 y = TIC80_FULLHEIGHT * scale;
 	GPU_BlitScale(platform.keyboard.texture.up, NULL, platform.gpu.screen, 0, y, scale, scale);
 
 	{
