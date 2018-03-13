@@ -193,6 +193,11 @@ static void initTouchKeyboard()
 		GPU_SetImageFilter(platform.keyboard.texture.up, GPU_FILTER_NEAREST);
 	}
 
+	typedef struct {const char* text; s32 x; s32 y;} Label;
+	static const Label Labels[] =
+	{
+		#include "kbdlabels.inl"
+	};
 	{
 		enum{Cols=TIC_MAP_SCREEN_WIDTH, Rows=14};
 
@@ -200,6 +205,13 @@ static void initTouchKeyboard()
 
 		tic->api.map(tic, &platform.studio->config()->cart->bank0.map, 
 			&platform.studio->config()->cart->bank0.tiles, TIC_MAP_SCREEN_WIDTH, 0, Cols, Rows, 0, 0, -1, 1);
+
+		for(s32 i = 0; i < COUNT_OF(Labels); i++)
+		{
+			const Label* label = Labels + i;
+			if(label->text)
+				tic->api.text(tic, label->text, label->x, label->y, 3);
+		}
 
 		tic->api.blit(tic, NULL, NULL, NULL);
 
@@ -220,6 +232,13 @@ static void initTouchKeyboard()
 
 		tic->api.remap(tic, &platform.studio->config()->cart->bank0.map, 
 			&platform.studio->config()->cart->bank0.tiles, TIC_MAP_SCREEN_WIDTH, 0, Cols, Rows, 0, 0, -1, 1, kdbRemap, NULL);
+
+		for(s32 i = 0; i < COUNT_OF(Labels); i++)
+		{
+			const Label* label = Labels + i;
+			if(label->text)
+				tic->api.text(tic, label->text, label->x, label->y+2, 3);
+		}
 
 		tic->api.blit(tic, NULL, NULL, NULL);
 
