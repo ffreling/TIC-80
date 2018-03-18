@@ -1193,7 +1193,7 @@ static void openSystemPath(const char* path)
 #elif defined(__LINUX__)
 
 	sprintf(command, "xdg-open \"%s\"", path);
-	system(command);
+	if(system(command)){}
 
 #elif defined(__MACOSX__)
 
