@@ -12,7 +12,7 @@
 #include <emscripten.h>
 #endif
 
-#define STUDIO_UI_SCALE 3
+#define STUDIO_UI_SCALE 2
 #define STUDIO_PIXEL_FORMAT GPU_FORMAT_RGBA
 #define TEXTURE_SIZE (TIC80_FULLWIDTH)
 #define OFFSET_LEFT ((TIC80_FULLWIDTH-TIC80_WIDTH)/2)
@@ -181,6 +181,88 @@ static void kdbRemap(void* data, s32 x, s32 y, RemapResult* result)
 		result->index += 48;
 }
 
+static void drawBitIcon(s32 x, s32 y, const u8* ptr, u8 color)
+{
+	tic_mem* tic = platform.studio->tic;
+
+	for(s32 i = 0; i < TIC_SPRITESIZE; i++, ptr++)
+		for(s32 col = 0; col < TIC_SPRITESIZE; col++)
+			if(*ptr & 1 << col)
+				tic->api.pixel(tic, x + TIC_SPRITESIZE - col - 1, y + i, color);
+}
+
+static void drawKeyboardLabels(s32 shift)
+{
+	tic_mem* tic = platform.studio->tic;
+
+	enum{Color = tic_color_dark_gray};
+
+	typedef struct {const char* text; s32 x; s32 y;} Label;
+	static const Label Labels[] =
+	{
+		#include "kbdlabels.inl"
+	};
+
+	for(s32 i = 0; i < COUNT_OF(Labels); i++)
+	{
+		const Label* label = Labels + i;
+		if(label->text)
+			tic->api.text(tic, label->text, label->x, label->y + shift, Color);
+	}
+
+	{
+		static const u8 Icon[] = 
+		{
+			0b00000000,
+			0b00000000,
+			0b00001100,
+			0b00011110,
+			0b00111111,
+			0b00111111,
+			0b00000000,
+			0b00000000,
+
+			0b00000000,
+			0b00000000,
+			0b00111111,
+			0b00111111,
+			0b00011110,
+			0b00001100,
+			0b00000000,
+			0b00000000,
+
+			0b00000000,
+			0b00000110,
+			0b00001110,
+			0b00011110,
+			0b00011110,
+			0b00001110,
+			0b00000110,
+			0b00000000,
+
+			0b00000000,
+			0b00011000,
+			0b00011100,
+			0b00011110,
+			0b00011110,
+			0b00011100,
+			0b00011000,
+			0b00000000,
+		};
+
+		static const SDL_Point Pos[] = 
+		{
+			{25*8+3, 9*8+3},
+			{25*8+3, 11*8+3},
+			{23*8+3, 11*8+3},
+			{27*8+3, 11*8+3},				
+		};
+
+		for(s32 i = 0; i < COUNT_OF(Pos); i++)
+			drawBitIcon(Pos[i].x, Pos[i].y + shift, &Icon[i*BITS_IN_BYTE], Color);
+	}
+}
+
 static void initTouchKeyboard()
 {
 	tic_mem* tic = platform.studio->tic;
@@ -193,11 +275,6 @@ static void initTouchKeyboard()
 		GPU_SetImageFilter(platform.keyboard.texture.up, GPU_FILTER_NEAREST);
 	}
 
-	typedef struct {const char* text; s32 x; s32 y;} Label;
-	static const Label Labels[] =
-	{
-		#include "kbdlabels.inl"
-	};
 	{
 		enum{Cols=TIC_MAP_SCREEN_WIDTH, Rows=14};
 
@@ -206,12 +283,7 @@ static void initTouchKeyboard()
 		tic->api.map(tic, &platform.studio->config()->cart->bank0.map, 
 			&platform.studio->config()->cart->bank0.tiles, TIC_MAP_SCREEN_WIDTH, 0, Cols, Rows, 0, 0, -1, 1);
 
-		for(s32 i = 0; i < COUNT_OF(Labels); i++)
-		{
-			const Label* label = Labels + i;
-			if(label->text)
-				tic->api.text(tic, label->text, label->x, label->y, 3);
-		}
+		drawKeyboardLabels(0);
 
 		tic->api.blit(tic, NULL, NULL, NULL);
 
@@ -233,12 +305,7 @@ static void initTouchKeyboard()
 		tic->api.remap(tic, &platform.studio->config()->cart->bank0.map, 
 			&platform.studio->config()->cart->bank0.tiles, TIC_MAP_SCREEN_WIDTH, 0, Cols, Rows, 0, 0, -1, 1, kdbRemap, NULL);
 
-		for(s32 i = 0; i < COUNT_OF(Labels); i++)
-		{
-			const Label* label = Labels + i;
-			if(label->text)
-				tic->api.text(tic, label->text, label->x, label->y+2, 3);
-		}
+		drawKeyboardLabels(2);
 
 		tic->api.blit(tic, NULL, NULL, NULL);
 
@@ -454,13 +521,13 @@ static bool checkTouch(const SDL_Rect* rect, s32* x, s32* y)
 
 static void processTouchKeyboard()
 {
-	enum{Cols=30, Rows=14};
+	enum{Cols=30, Rows=15};
 
 	s32 w, h;
 	SDL_GetWindowSize(platform.window, &w, &h);
 
 	float scale = (float)w / (TIC80_FULLWIDTH);
-	s32 y = TIC80_FULLHEIGHT * scale;
+	s32 y = h - Rows * TIC_SPRITESIZE * scale;
 
 	SDL_Rect kbd = {OFFSET_LEFT*scale, y + OFFSET_TOP*scale, TIC80_WIDTH*scale, TIC80_HEIGHT*scale};
 
@@ -512,6 +579,9 @@ static void processTouchKeyboard()
 
 static void processTouchGamepad()
 {
+	// TODO: remove this
+	return;
+
 	platform.gamepad.touch.data = 0;
 
 	const s32 size = platform.gamepad.part.size;
@@ -682,7 +752,7 @@ static void processGamepad()
 {
 
 #if !defined(__EMSCRIPTEN__) && !defined(__MACOSX__)
-	// processTouchGamepad();
+	processTouchGamepad();
 	processTouchKeyboard();
 #endif
 
@@ -764,7 +834,7 @@ static void pollEvent()
 		}
 	}
 
-	// processMouse();
+	processMouse();
 	processKeyboard();
 	processGamepad();
 }
@@ -823,14 +893,14 @@ static void renderKeyboard()
 {
 	// if(platform.gamepad.show || platform.gamepad.alpha); else return;
 
-	enum{Cols=30, Rows=14};
+	enum{Cols=30, Rows=15};
 
 	s32 w, h;
 	SDL_GetWindowSize(platform.window, &w, &h);
 
 	float scale = (float)w / (TIC80_FULLWIDTH);
 
-	s32 y = 0;//TIC80_FULLHEIGHT * scale;
+	s32 y = h - Rows * TIC_SPRITESIZE * scale;
 	GPU_BlitScale(platform.keyboard.texture.up, NULL, platform.gpu.screen, 0, y, scale, scale);
 
 	{
@@ -1336,7 +1406,7 @@ static void gpuTick()
 		}
 
 		renderCursor();
-		// renderGamepad();
+		renderGamepad();
 		renderKeyboard();
 	}
 
@@ -1384,7 +1454,7 @@ static s32 start(s32 argc, char **argv, const char* folder)
 	enum{Width = TIC80_FULLWIDTH * STUDIO_UI_SCALE, Height = TIC80_FULLHEIGHT * STUDIO_UI_SCALE};
 
 	platform.window = SDL_CreateWindow( TIC_TITLE, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-		Width, Height, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE| SDL_WINDOW_OPENGL);
+		Width, Height*2, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE| SDL_WINDOW_OPENGL);
 
 	setWindowIcon();
 
