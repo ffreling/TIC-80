@@ -7,7 +7,7 @@ echo "For a normal build, use the linux target."
 echo "-lto targets (Link Time Optimization) have smaller output size."
 echo "wasm, emscripten and mingw targets require their compilers to be installed."
 PS3="Select build target: "
-options=("dependencies" "linux" "linux32-lto" "linux64-lto" "emscripten" "wasm" "mingw" "chip-lto" "exit")
+options=("dependencies" "linux" "linux32-lto" "linux64-lto" "emscripten" "wasm" "mingw" "chip-lto" "gameshell" "exit")
 select opt in "${options[@]}"
 do
   case $opt in
@@ -34,6 +34,9 @@ do
       ;;
     "chip-lto")
       make chip-lto
+      ;;
+    "gameshell")
+      make gameshell
       ;;
     "exit")
       break

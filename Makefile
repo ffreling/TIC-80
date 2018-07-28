@@ -390,6 +390,9 @@ linux-pro:
 	$(eval OPT += $(OPT_PRO))
 	make linux OPT="$(OPT)"
 
+gameshell: $(WREN_A) $(SDLGPU_A) $(LUA_A) $(SDL2_A)
+	$(CC) $(LINUX_INCLUDES) $(SOURCES) $(SYSTEM) $(LPEG_SRC) $(GIF_SRC) $(SOURCES_EXT) $(TIC80_SRC) $(OPT) $(INCLUDES) $(LINUX_LIBS) $(LINUX_LINKER_FLAGS) -o $(BIN_NAME)
+
 macosx:
 	$(CC) $(SOURCES) $(SYSTEM) $(TIC80_SRC) $(SOURCES_EXT) src/ext/file_dialog.m $(OPT) $(MACOSX_OPT) $(INCLUDES) $(MACOSX_LIBS) -o $(BIN_NAME)
 
